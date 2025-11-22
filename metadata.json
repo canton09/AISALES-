@@ -1,0 +1,5 @@
+{
+  "name": "AISALES - 汽车销售智能教练",
+  "description": "专为汽车销售打造的智能辅导平台。分析展厅接待与电话录音，提供车型需求分析、试驾邀约及成交话术的深度诊断。",
+  "requestFramePermissions": []
+}
