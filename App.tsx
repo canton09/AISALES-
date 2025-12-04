@@ -1,18 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FileUpload from './components/FileUpload';
 import Transcript from './components/Transcript';
 import SentimentGraph from './components/SentimentGraph';
 import CoachingCard from './components/CoachingCard';
+import SettingsModal from './components/SettingsModal';
 import { analyzeSalesCall } from './services/geminiService';
 import { AnalysisResult, AppState } from './types';
-import { Sparkles, CarFront, Zap } from 'lucide-react';
+import { CarFront, Zap, Settings, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
+  // API Keys State
+  const [geminiKey, setGeminiKey] = useState<string>('');
+  const [deepseekKey, setDeepseekKey] = useState<string>('');
+
+  useEffect(() => {
+    const storedGemini = localStorage.getItem('GEMINI_API_KEY');
+    const storedDeepseek = localStorage.getItem('DEEPSEEK_API_KEY');
+    if (storedGemini) setGeminiKey(storedGemini);
+    if (storedDeepseek) setDeepseekKey(storedDeepseek);
+
+    // If no keys, prompt user
+    if (!storedGemini) {
+        setIsSettingsOpen(true);
+    }
+  }, []);
+
+  const handleKeysSave = (gKey: string, dKey: string) => {
+      setGeminiKey(gKey);
+      setDeepseekKey(dKey);
+      localStorage.setItem('GEMINI_API_KEY', gKey);
+      localStorage.setItem('DEEPSEEK_API_KEY', dKey);
+  };
 
   const handleFileSelect = async (file: File) => {
+    if (!geminiKey) {
+        setIsSettingsOpen(true);
+        setError("请先配置 Gemini API Key 以进行智能分析。");
+        return;
+    }
+
     setAppState(AppState.ANALYZING);
     setError(null);
     setAnalysisResult(null);
@@ -22,17 +53,17 @@ const App: React.FC = () => {
       const reader = new FileReader();
       reader.onload = async (e) => {
         const result = e.target?.result as string;
-        // Remove metadata prefix (e.g., "data:audio/mp3;base64,")
+        // Remove metadata prefix
         const base64Data = result.split(',')[1];
         const mimeType = file.type;
 
         try {
-          const data = await analyzeSalesCall(base64Data, mimeType);
+          const data = await analyzeSalesCall(base64Data, mimeType, geminiKey);
           setAnalysisResult(data);
           setAppState(AppState.COMPLETE);
-        } catch (err) {
+        } catch (err: any) {
           console.error(err);
-          setError("分析音频失败。请确保文件有效并重试。注意：过长的文件可能会导致超时。");
+          setError(err.message || "分析音频失败。请确保 API Key 有效且额度充足。");
           setAppState(AppState.ERROR);
         }
       };
@@ -50,6 +81,15 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+      
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)}
+        onKeysSave={handleKeysSave}
+        initialGeminiKey={geminiKey}
+        initialDeepseekKey={deepseekKey}
+      />
+
       {/* Header */}
       <header className="bg-zinc-950/80 backdrop-blur-md border-b border-white/5 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -65,7 +105,27 @@ const App: React.FC = () => {
               <span className="text-[9px] font-semibold text-zinc-500 tracking-[0.2em] uppercase mt-0.5">Auto Intelligence</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+             {geminiKey ? (
+                 <span className="hidden md:flex items-center gap-1.5 text-[10px] text-emerald-500 font-mono bg-emerald-950/30 px-2 py-1 rounded border border-emerald-900/50">
+                     <ShieldCheck size={12} />
+                     SYSTEM ONLINE
+                 </span>
+             ) : (
+                 <span className="hidden md:flex items-center gap-1.5 text-[10px] text-orange-500 font-mono bg-orange-950/30 px-2 py-1 rounded border border-orange-900/50">
+                     <AlertCircle size={12} />
+                     KEY REQUIRED
+                 </span>
+             )}
+            
+            <button 
+                onClick={() => setIsSettingsOpen(true)}
+                className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-full transition-colors relative group"
+            >
+                <Settings size={20} />
+                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-zinc-950 transform scale-0 group-hover:scale-0 transition-transform origin-center"></span>
+                {!geminiKey && <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-zinc-950 animate-pulse"></span>}
+            </button>
             <span className="px-3 py-1 bg-zinc-900 border border-zinc-700 text-cyan-400 text-xs font-medium rounded-full flex items-center gap-2 shadow-lg shadow-cyan-500/10">
               <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
               使用Gemini高级模型
@@ -85,7 +145,7 @@ const App: React.FC = () => {
                 智能驱动 <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">成交时刻</span>
               </h2>
               <p className="text-lg text-zinc-400 max-w-2xl mx-auto font-light tracking-wide">
-                重塑次世代展厅的交互范式。AI 神经中枢深度解构每一场对话博弈，从毫秒级语音流中捕获成交信号，定义智能零售时代的销售新法则。
+                专为未来展厅设计。AI 引擎深度解析对话数据，优化销售表现。
               </p>
             </div>
           )}

@@ -1,8 +1,6 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { AnalysisResult } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const analysisSchema: Schema = {
   type: Type.OBJECT,
   properties: {
@@ -78,7 +76,28 @@ const analysisSchema: Schema = {
   required: ["summary", "keyInsight", "transcript", "sentimentGraph", "coaching"],
 };
 
-export const analyzeSalesCall = async (base64Audio: string, mimeType: string): Promise<AnalysisResult> => {
+export const validateGeminiKey = async (apiKey: string): Promise<boolean> => {
+  if (!apiKey) return false;
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: { parts: [{ text: "ping" }] },
+    });
+    return true;
+  } catch (error) {
+    console.warn("Gemini Validation Failed:", error);
+    return false;
+  }
+};
+
+export const analyzeSalesCall = async (base64Audio: string, mimeType: string, apiKey: string): Promise<AnalysisResult> => {
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please configure it in settings.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
