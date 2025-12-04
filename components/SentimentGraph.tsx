@@ -13,11 +13,11 @@ const SentimentGraph: React.FC<SentimentGraphProps> = ({ data }) => {
       <div className="flex items-center justify-between mb-8">
         <h3 className="text-sm font-semibold text-zinc-300 uppercase tracking-widest flex items-center gap-2">
           <Activity className="text-cyan-500 w-4 h-4" />
-          Engagement Telemetry
+          客户参与度趋势
         </h3>
         <div className="flex items-center gap-3 text-xs text-zinc-500 font-mono">
-            <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]"></div> HIGH</span>
-            <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-zinc-600"></div> LOW</span>
+            <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]"></div> 高</span>
+            <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-zinc-600"></div> 低</span>
         </div>
       </div>
       
@@ -52,8 +52,8 @@ const SentimentGraph: React.FC<SentimentGraphProps> = ({ data }) => {
                   boxShadow: '0 4px 20px rgba(0,0,0,0.5)' 
                 }}
                 itemStyle={{ color: '#22d3ee', fontWeight: 500, fontSize: '12px', fontFamily: 'monospace' }}
-                formatter={(value: number) => [`${value}`, 'SCORE']}
-                labelFormatter={(label) => `T: ${label}`}
+                formatter={(value: number) => [`${value}`, '参与度得分']}
+                labelFormatter={(label) => `时间: ${label}`}
                 labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontSize: '10px' }}
             />
             <Area 

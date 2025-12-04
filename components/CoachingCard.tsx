@@ -14,7 +14,7 @@ const CoachingCard: React.FC<CoachingCardProps> = ({ data }) => {
         <div className="bg-emerald-950/20 p-4 border-b border-emerald-900/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Trophy className="text-emerald-500 w-4 h-4" />
-            <h3 className="font-semibold text-emerald-100 tracking-wide text-sm uppercase">Performance Highlights</h3>
+            <h3 className="font-semibold text-emerald-100 tracking-wide text-sm uppercase">表现亮点</h3>
           </div>
         </div>
         <div className="p-5">
@@ -34,7 +34,7 @@ const CoachingCard: React.FC<CoachingCardProps> = ({ data }) => {
         <div className="bg-orange-950/20 p-4 border-b border-orange-900/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
              <TrendingUp className="text-orange-500 w-4 h-4" />
-             <h3 className="font-semibold text-orange-100 tracking-wide text-sm uppercase">Optimization Required</h3>
+             <h3 className="font-semibold text-orange-100 tracking-wide text-sm uppercase">待优化项</h3>
           </div>
         </div>
         <div className="p-5">

@@ -14,7 +14,7 @@ const Transcript: React.FC<TranscriptProps> = ({ transcript }) => {
           <span className="text-cyan-500">
             <Headphones size={16} />
           </span>
-          Audio Log
+          对话记录
         </h3>
         <span className="text-[10px] text-zinc-600 font-mono">REC_001</span>
       </div>

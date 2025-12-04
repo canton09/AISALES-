@@ -70,6 +70,12 @@ const App: React.FC = () => {
       localStorage.setItem('GEMINI_API_KEY', gKey);
       localStorage.setItem('DEEPSEEK_API_KEY', dKey);
       
+      // Reset errors and state so user can retry immediately
+      setError(null);
+      if (appState === AppState.ERROR) {
+        setAppState(AppState.IDLE);
+      }
+      
       // Re-validate immediately upon save
       validateConnections(gKey, dKey);
   };
@@ -135,7 +141,7 @@ const App: React.FC = () => {
     return (
       <div className={`hidden md:flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded border ${styles[status]} transition-all`}>
         {icons[status]}
-        {name}: {status === 'checking' ? 'VERIFYING...' : status === 'connected' ? 'ONLINE' : 'OFFLINE'}
+        {name}: {status === 'checking' ? '验证中...' : status === 'connected' ? '已连接' : '未连接'}
       </div>
     );
   };
@@ -163,7 +169,7 @@ const App: React.FC = () => {
                <h1 className="text-xl font-bold text-white tracking-widest leading-none">
                 AISALES
               </h1>
-              <span className="text-[9px] font-semibold text-zinc-500 tracking-[0.2em] uppercase mt-0.5">Auto Intelligence</span>
+              <span className="text-[9px] font-semibold text-zinc-500 tracking-[0.2em] uppercase mt-0.5">汽车销售智能引擎</span>
             </div>
           </div>
           
@@ -178,7 +184,7 @@ const App: React.FC = () => {
             <button 
                 onClick={() => setIsSettingsOpen(true)}
                 className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-full transition-colors relative group"
-                title="API Configuration"
+                title="API 配置"
             >
                 <Settings size={20} />
                 {(geminiStatus === 'error' || geminiStatus === 'missing') && (
@@ -192,7 +198,7 @@ const App: React.FC = () => {
                 <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${geminiStatus === 'connected' ? 'bg-cyan-400' : 'bg-zinc-500'}`}></span>
                 <span className={`relative inline-flex rounded-full h-2 w-2 ${geminiStatus === 'connected' ? 'bg-cyan-500' : 'bg-zinc-600'}`}></span>
               </span>
-              Core Engine
+              核心引擎
             </span>
           </div>
         </div>
@@ -243,7 +249,7 @@ const App: React.FC = () => {
               <div className="lg:col-span-3">
                 <div className="bg-zinc-900/40 backdrop-blur-sm p-6 rounded-xl border border-white/5 mb-6 relative overflow-hidden group">
                     <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-500 to-transparent opacity-50"></div>
-                    <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-3">Analysis Summary</h2>
+                    <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-3">分析总结</h2>
                     <p className="text-zinc-100 text-lg leading-relaxed font-light">{analysisResult.summary}</p>
                 </div>
               </div>
