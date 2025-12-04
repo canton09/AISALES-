@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import FileUpload from './components/FileUpload';
 import Transcript from './components/Transcript';
 import SentimentGraph from './components/SentimentGraph';
 import CoachingCard from './components/CoachingCard';
 import SettingsModal from './components/SettingsModal';
-import { analyzeSalesCall } from './services/geminiService';
+import { analyzeSalesCall, validateGeminiKey } from './services/geminiService';
+import { validateDeepSeekKey } from './services/deepseekService';
 import { AnalysisResult, AppState } from './types';
-import { CarFront, Zap, Settings, ShieldCheck, AlertCircle } from 'lucide-react';
+import { CarFront, Zap, Settings, ShieldCheck, AlertCircle, Wifi, WifiOff, Loader2, BrainCircuit } from 'lucide-react';
+
+// Define status types for cleaner state management
+type ConnectionStatus = 'missing' | 'checking' | 'connected' | 'error';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
@@ -18,29 +22,62 @@ const App: React.FC = () => {
   const [geminiKey, setGeminiKey] = useState<string>('');
   const [deepseekKey, setDeepseekKey] = useState<string>('');
 
-  useEffect(() => {
-    const storedGemini = localStorage.getItem('GEMINI_API_KEY');
-    const storedDeepseek = localStorage.getItem('DEEPSEEK_API_KEY');
-    if (storedGemini) setGeminiKey(storedGemini);
-    if (storedDeepseek) setDeepseekKey(storedDeepseek);
+  // Connection Status State
+  const [geminiStatus, setGeminiStatus] = useState<ConnectionStatus>('missing');
+  const [deepseekStatus, setDeepseekStatus] = useState<ConnectionStatus>('missing');
 
-    // If no keys, prompt user
-    if (!storedGemini) {
-        setIsSettingsOpen(true);
+  // Validate keys function
+  const validateConnections = useCallback(async (gKey: string, dKey: string) => {
+    // Check Gemini
+    if (!gKey) {
+      setGeminiStatus('missing');
+    } else {
+      setGeminiStatus('checking');
+      validateGeminiKey(gKey).then(isValid => {
+        setGeminiStatus(isValid ? 'connected' : 'error');
+      });
+    }
+
+    // Check DeepSeek
+    if (!dKey) {
+      setDeepseekStatus('missing');
+    } else {
+      setDeepseekStatus('checking');
+      validateDeepSeekKey(dKey).then(isValid => {
+        setDeepseekStatus(isValid ? 'connected' : 'error');
+      });
     }
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    const storedGemini = localStorage.getItem('GEMINI_API_KEY') || '';
+    const storedDeepseek = localStorage.getItem('DEEPSEEK_API_KEY') || '';
+    
+    setGeminiKey(storedGemini);
+    setDeepseekKey(storedDeepseek);
+
+    if (!storedGemini) {
+        setIsSettingsOpen(true);
+    } else {
+        validateConnections(storedGemini, storedDeepseek);
+    }
+  }, [validateConnections]);
 
   const handleKeysSave = (gKey: string, dKey: string) => {
       setGeminiKey(gKey);
       setDeepseekKey(dKey);
       localStorage.setItem('GEMINI_API_KEY', gKey);
       localStorage.setItem('DEEPSEEK_API_KEY', dKey);
+      
+      // Re-validate immediately upon save
+      validateConnections(gKey, dKey);
   };
 
   const handleFileSelect = async (file: File) => {
-    if (!geminiKey) {
+    if (geminiStatus !== 'connected') {
         setIsSettingsOpen(true);
-        setError("请先配置 Gemini API Key 以进行智能分析。");
+        setError("Gemini API 未连接或验证失败，请检查设置。");
         return;
     }
 
@@ -79,6 +116,30 @@ const App: React.FC = () => {
     }
   };
 
+  // Helper to render status badge
+  const renderStatusBadge = (name: string, status: ConnectionStatus) => {
+    if (status === 'missing') return null;
+    
+    const styles = {
+      checking: "bg-zinc-800 text-zinc-400 border-zinc-700",
+      connected: "bg-emerald-950/30 text-emerald-500 border-emerald-900/50",
+      error: "bg-red-950/30 text-red-500 border-red-900/50"
+    };
+
+    const icons = {
+      checking: <Loader2 size={12} className="animate-spin" />,
+      connected: <Wifi size={12} />,
+      error: <WifiOff size={12} />
+    };
+
+    return (
+      <div className={`hidden md:flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded border ${styles[status]} transition-all`}>
+        {icons[status]}
+        {name}: {status === 'checking' ? 'VERIFYING...' : status === 'connected' ? 'ONLINE' : 'OFFLINE'}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
       
@@ -105,30 +166,33 @@ const App: React.FC = () => {
               <span className="text-[9px] font-semibold text-zinc-500 tracking-[0.2em] uppercase mt-0.5">Auto Intelligence</span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-             {geminiKey ? (
-                 <span className="hidden md:flex items-center gap-1.5 text-[10px] text-emerald-500 font-mono bg-emerald-950/30 px-2 py-1 rounded border border-emerald-900/50">
-                     <ShieldCheck size={12} />
-                     SYSTEM ONLINE
-                 </span>
-             ) : (
-                 <span className="hidden md:flex items-center gap-1.5 text-[10px] text-orange-500 font-mono bg-orange-950/30 px-2 py-1 rounded border border-orange-900/50">
-                     <AlertCircle size={12} />
-                     KEY REQUIRED
-                 </span>
-             )}
-            
+          
+          <div className="flex items-center gap-3">
+             {/* Status Indicators */}
+             <div className="flex items-center gap-2 mr-2">
+                {renderStatusBadge("Gemini", geminiStatus)}
+                {renderStatusBadge("DeepSeek", deepseekStatus)}
+             </div>
+
+             {/* Settings Button with Alert Dot */}
             <button 
                 onClick={() => setIsSettingsOpen(true)}
                 className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-full transition-colors relative group"
+                title="API Configuration"
             >
                 <Settings size={20} />
-                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-zinc-950 transform scale-0 group-hover:scale-0 transition-transform origin-center"></span>
-                {!geminiKey && <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-zinc-950 animate-pulse"></span>}
+                {(geminiStatus === 'error' || geminiStatus === 'missing') && (
+                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-zinc-950 animate-pulse"></span>
+                )}
             </button>
-            <span className="px-3 py-1 bg-zinc-900 border border-zinc-700 text-cyan-400 text-xs font-medium rounded-full flex items-center gap-2 shadow-lg shadow-cyan-500/10">
-              <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
-              使用Gemini高级模型
+            
+            <span className="hidden sm:flex px-3 py-1 bg-zinc-900 border border-zinc-700 text-cyan-400 text-xs font-medium rounded-full items-center gap-2 shadow-lg shadow-cyan-500/10">
+              <BrainCircuit size={14} />
+              <span className="relative flex h-2 w-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${geminiStatus === 'connected' ? 'bg-cyan-400' : 'bg-zinc-500'}`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${geminiStatus === 'connected' ? 'bg-cyan-500' : 'bg-zinc-600'}`}></span>
+              </span>
+              Core Engine
             </span>
           </div>
         </div>
@@ -155,14 +219,17 @@ const App: React.FC = () => {
           )}
 
           {appState === AppState.ERROR && (
-            <div className="mt-6 mx-auto max-w-lg p-4 bg-red-950/30 border border-red-900/50 text-red-400 rounded-lg text-center backdrop-blur-sm">
-              {error}
-              <button 
-                onClick={() => setAppState(AppState.IDLE)}
-                className="block mx-auto mt-2 text-sm font-semibold underline hover:text-red-300"
-              >
-                系统重置
-              </button>
+            <div className="mt-6 mx-auto max-w-lg p-4 bg-red-950/30 border border-red-900/50 text-red-400 rounded-lg text-center backdrop-blur-sm flex items-center gap-3 justify-center">
+              <AlertCircle size={20} />
+              <div>
+                <p>{error}</p>
+                <button 
+                  onClick={() => setAppState(AppState.IDLE)}
+                  className="mt-1 text-sm font-semibold underline hover:text-red-300"
+                >
+                  重试
+                </button>
+              </div>
             </div>
           )}
         </div>
